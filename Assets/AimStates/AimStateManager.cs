@@ -14,6 +14,11 @@ public class AimStateManager : MonoBehaviour
     [SerializeField] float aimFOV = 40f;
     [SerializeField] float zoomSpeed = 10f;
 
+    [Header("Aim Raycast")]
+    [SerializeField] Transform aimPos;
+    [SerializeField] float aimSmoothSpeed = 10f;
+    [SerializeField] LayerMask aimMask;
+
     float xRotation;
     float yRotation;
 
@@ -48,9 +53,20 @@ public class AimStateManager : MonoBehaviour
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -80f, 80f);
 
-        // Smoothly zoom the camera
-        float targetFOV = isAiming ? aimFOV : normalFOV;
-        cineCam.Lens.FieldOfView = Mathf.Lerp(cineCam.Lens.FieldOfView, targetFOV, Time.deltaTime * zoomSpeed);
+
+        if (cineCam != null)
+        {
+            float targetFOV = isAiming ? aimFOV : normalFOV;
+            cineCam.Lens.FieldOfView = Mathf.Lerp(cineCam.Lens.FieldOfView, targetFOV, Time.deltaTime * zoomSpeed);
+        }
+
+        Vector2 screenCentre = new Vector2(Screen.width / 2, Screen.height / 2);
+        Ray ray = Camera.main.ScreenPointToRay(screenCentre);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, aimMask))
+            aimPos.position = Vector3.Lerp(aimPos.position, hit.point, aimSmoothSpeed * Time.deltaTime);
+        else
+            aimPos.position = Vector3.Lerp(aimPos.position, ray.GetPoint(100), aimSmoothSpeed * Time.deltaTime);
     }
 
     public void SwitchState(AimBaseState state)
