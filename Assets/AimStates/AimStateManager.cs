@@ -22,7 +22,7 @@ public class AimStateManager : MonoBehaviour
     float xRotation;
     float yRotation;
 
-    public Animator anim;
+    [SerializeField] public Animator anim;
 
     AimBaseState currentState;
     public HipFireState HipFire = new HipFireState();
@@ -35,7 +35,9 @@ public class AimStateManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        anim = GetComponentInChildren<Animator>();
+        if (anim == null) anim = GetComponentInChildren<Animator>();
+        if (cineCam != null) normalFOV = cineCam.Lens.FieldOfView;
+
         SwitchState(HipFire);
     }
 
@@ -53,20 +55,22 @@ public class AimStateManager : MonoBehaviour
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -80f, 80f);
 
-
         if (cineCam != null)
         {
             float targetFOV = isAiming ? aimFOV : normalFOV;
             cineCam.Lens.FieldOfView = Mathf.Lerp(cineCam.Lens.FieldOfView, targetFOV, Time.deltaTime * zoomSpeed);
         }
 
-        Vector2 screenCentre = new Vector2(Screen.width / 2, Screen.height / 2);
-        Ray ray = Camera.main.ScreenPointToRay(screenCentre);
+        if (aimPos != null)
+        {
+            Vector2 screenCentre = new Vector2(Screen.width / 2, Screen.height / 2);
+            Ray ray = Camera.main.ScreenPointToRay(screenCentre);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, aimMask))
-            aimPos.position = Vector3.Lerp(aimPos.position, hit.point, aimSmoothSpeed * Time.deltaTime);
-        else
-            aimPos.position = Vector3.Lerp(aimPos.position, ray.GetPoint(100), aimSmoothSpeed * Time.deltaTime);
+            if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, aimMask))
+                aimPos.position = Vector3.Lerp(aimPos.position, hit.point, aimSmoothSpeed * Time.deltaTime);
+            else
+                aimPos.position = Vector3.Lerp(aimPos.position, ray.GetPoint(100), aimSmoothSpeed * Time.deltaTime);
+        }
     }
 
     public void SwitchState(AimBaseState state)
@@ -77,16 +81,16 @@ public class AimStateManager : MonoBehaviour
 
     void LateUpdate()
     {
-        camFollowPos.localEulerAngles = new Vector3(
-            xRotation,
-            camFollowPos.localEulerAngles.y,
-            camFollowPos.localEulerAngles.z
-        );
+        if (camFollowPos != null)
+        {
+            camFollowPos.localEulerAngles = new Vector3(
+                xRotation,
+                camFollowPos.localEulerAngles.y,
+                camFollowPos.localEulerAngles.z
+            );
+        }
 
-        transform.eulerAngles = new Vector3(
-            transform.eulerAngles.x,
-            yRotation,
-            transform.eulerAngles.z
-        );
+        // Only rotate Y axis — prevents sideways body tilt
+        transform.rotation = Quaternion.Euler(0, yRotation, 0);
     }
 }
